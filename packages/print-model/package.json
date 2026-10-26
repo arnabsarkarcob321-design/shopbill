@@ -1,0 +1,21 @@
+{
+  "name": "@shopbill/print-model",
+  "version": "1.0.0",
+  "description": "Canonical invoice print model and multi-format renderers (HTML, thermal, PDF) for ShopBill",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@shopbill/gst-engine": "workspace:*",
+    "@shopbill/i18n": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.7"
+  }
+}
