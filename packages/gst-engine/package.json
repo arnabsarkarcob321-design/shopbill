@@ -1,0 +1,18 @@
+{
+  "name": "@shopbill/gst-engine",
+  "version": "1.0.0",
+  "description": "Pure, deterministic TypeScript GST engine with integer paise arithmetic and BigInt precision",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.7"
+  }
+}

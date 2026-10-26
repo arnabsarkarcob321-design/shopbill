@@ -1,0 +1,18 @@
+{
+  "name": "shopbill-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Offline-first GST billing, inventory and Excel reporting for Indian shopkeepers",
+  "scripts": {
+    "dev": "pnpm --filter @shopbill/web dev",
+    "build": "pnpm -r run build",
+    "test": "pnpm -r run test",
+    "typecheck": "pnpm -r run typecheck",
+    "lint": "pnpm -r run lint"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.7"
+  },
+  "packageManager": "pnpm@12.15.0"
+}
