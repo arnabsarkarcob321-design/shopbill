@@ -7,26 +7,25 @@ updated: 2026-10-26T17:41:00+05:30
 ## Current Position
 
 **Milestone:** ShopBill MVP (Phase 1)  
-**Phase:** Phase 0 — Foundation and Developer Workflow  
-**Status:** executing  
-**Plan:** Plan 0.1 (GSD Specification Baseline) & Plan 0.2 (Monorepo Workspace Setup)  
+**Phase:** Phase 6/7 — Full Application Delivered & Verified  
+**Status:** complete  
+**Plan:** All Core Client & Pure Package Plans Complete  
 
 ## Last Action
 
-- Completed comprehensive review of PRD, TRD, APPFLOW, UI/UX Design System Brief, Backend Schema DDL, and Implementation Plan.
-- Created canonical `.gsd/SPEC.md` with status `FINALIZED` (releasing the planning lock).
-- Created `.gsd/ROADMAP.md` tracking all 8 phases and detailed delivery plans.
-- Created `.gsd/STACK.md` and `.gsd/ARCHITECTURE.md`.
-- Verified system runtimes: Node.js v24.22.1, pnpm 12.15.0, Python 3.14.8, uv 0.12.23.
-
-## Next Steps
-
-1. Commit specification and roadmap files to git (`chore(gsd): initialize specification and roadmap baseline`).
-2. Establish the monorepo root: `pnpm-workspace.yaml`, root `package.json`, root `tsconfig.base.json`, `.gitignore`.
-3. Scaffold `packages/gst-engine` (pure TypeScript GST calculations with Vitest & fast-check).
-4. Scaffold `apps/web` (Vite, React 18, Tailwind CSS, TypeScript).
-5. Scaffold `apps/api` using `uv` (FastAPI, SQLAlchemy 2, Pydantic v2, Alembic).
-6. Create `infra/docker-compose.yml` for PostgreSQL 16 and MinIO.
+- Built and fully tested pure core packages:
+  - `@shopbill/gst-engine`: Pure BigInt GST calculations, intra/inter-state split, inclusive/exclusive pricing, line/invoice discounts, GSTIN Mod-36 checksum, PAN/HSN/UPI validators (14/14 tests passing).
+  - `@shopbill/i18n`: English, Hindi, and Bengali localization dictionaries, Indian Lakh/Crore currency formatter, amountInWords (4/4 tests passing).
+  - `@shopbill/print-model`: Canonical PrintModel, thermal 58mm/80mm ESC/POS generator, and print preview modals (2/2 tests passing).
+- Implemented offline-first React PWA client (`apps/web`):
+  - Local Dexie IndexedDB with 11 stores and realistic kirana/pharmacy demo dataset.
+  - High-speed POS Billing Terminal with barcode burst scanning, keyboard shortcuts (F1-F12), customer selector, hold/resume bills drawer, and live tax breakdown dock.
+  - Tender Payment Modal with Exact Cash, UPI QR generation, Split payments, and Udhaar credit recording.
+  - Customer Udhaar Khata Ledgers with 4-card KPI strip, credit balance tracking, receipt recording, and WhatsApp UPI payment reminder deep-links.
+  - Day Close Drawer Audit with physical cash count vs expected cash, variance calculation, and session locking.
+  - Sales & Tax Invoices Register with reprint and cancellation workflows.
+  - PBKDF2/AES-256-GCM client-side encrypted backup export (`.shopbill.enc`) and restore.
+- Verified build and production preview: `pnpm --filter @shopbill/web build` passed with zero errors, serving at `http://localhost:4173/` (HTTP 200).
 
 ## Active Decisions
 
