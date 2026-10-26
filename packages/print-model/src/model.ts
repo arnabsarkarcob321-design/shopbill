@@ -20,11 +20,11 @@ export interface ShopPrintProfile {
 
 export interface PartyPrintProfile {
   name: string;
-  phone?: string;
-  gstin?: string;
-  address?: string;
-  state_code?: string;
-  state_name?: string;
+  phone?: string | undefined;
+  gstin?: string | undefined;
+  address?: string | undefined;
+  state_code?: string | undefined;
+  state_name?: string | undefined;
 }
 
 export interface PaymentRecord {
@@ -101,15 +101,15 @@ export interface PrintModel {
  */
 export function createPrintModel(params: {
   shop: ShopPrintProfile;
-  customer?: PartyPrintProfile;
+  customer?: PartyPrintProfile | undefined;
   documentType: DocumentType;
   invoiceNumber: string;
   issueDate: Date | string;
   calculation: InvoiceCalculationResult;
-  payments?: PaymentRecord[];
-  balanceDuePaise?: number;
-  customTerms?: string[];
-  originalInvoiceRef?: string;
+  payments?: PaymentRecord[] | undefined;
+  balanceDuePaise?: number | undefined;
+  customTerms?: string[] | undefined;
+  originalInvoiceRef?: string | undefined;
 }): PrintModel {
   const { shop, customer, documentType, invoiceNumber, issueDate, calculation } = params;
 
