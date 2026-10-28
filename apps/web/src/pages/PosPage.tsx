@@ -141,7 +141,7 @@ export const PosPage: React.FC<PosPageProps> = ({ shopProfile }) => {
 
     const pm = createPrintModel({
       shop: {
-        name: shopProfile?.name || 'Gupta Kirana Store',
+        name: shopProfile?.name || 'My Store',
         address: shopProfile?.address || 'Kolkata',
         phone: shopProfile?.phone || '9830123456',
         gstin: shopProfile?.gstin,
@@ -529,7 +529,7 @@ export const PosPage: React.FC<PosPageProps> = ({ shopProfile }) => {
         calculation={calculation}
         customer={selectedParty}
         shopUpiId={shopProfile?.upi_id}
-        shopName={shopProfile?.name || 'Gupta Kirana Store'}
+        shopName={shopProfile?.name || 'My Store'}
         onFinalise={async (payments) => {
           return await finaliseInvoice({
             payments,

@@ -51,7 +51,7 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
           </div>
           <p className="text-xs text-slate-500 font-medium truncate max-w-[180px] md:max-w-xs">
-            {shopName || 'Gupta Kirana Store'}
+            {shopName || 'My Store'}
           </p>
         </div>
       </div>

@@ -92,7 +92,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ shopProfile }) => {
     const lines = await db.invoice_lines.where('invoice_id').equals(inv.id).toArray();
     const pm = createPrintModel({
       shop: {
-        name: shopProfile?.name || 'Gupta Kirana Store',
+        name: shopProfile?.name || 'My Store',
         address: shopProfile?.address || 'Kolkata',
         phone: shopProfile?.phone || '9830123456',
         gstin: shopProfile?.gstin,

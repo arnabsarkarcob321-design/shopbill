@@ -43,6 +43,20 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   );
 
   useEffect(() => {
+    if (shopProfile) {
+      setName(shopProfile.name || '');
+      setTagline(shopProfile.tagline || '');
+      setAddress(shopProfile.address || '');
+      setPhone(shopProfile.phone || '');
+      setGstin(shopProfile.gstin || '');
+      setStateCode(shopProfile.state_code || '19');
+      setTaxScheme(shopProfile.tax_scheme || 'REGULAR');
+      setPrefix(shopProfile.invoice_prefix || 'SB/26-27/');
+      setUpiId(shopProfile.upi_id || '');
+    }
+  }, [shopProfile]);
+
+  useEffect(() => {
     if (navigator.storage && navigator.storage.estimate) {
       navigator.storage.estimate().then((est) => {
         const used = ((est.usage || 0) / (1024 * 1024)).toFixed(1);
