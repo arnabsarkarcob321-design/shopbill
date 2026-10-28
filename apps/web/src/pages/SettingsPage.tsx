@@ -7,8 +7,11 @@ import {
   Building,
   HardDrive,
   CheckCircle,
+  Trash2,
+  RefreshCw,
 } from 'lucide-react';
 import { db } from '../db';
+import { clearDemoData, seedDemoData } from '../db/demoData';
 import { GST_STATE_CODES } from '@shopbill/gst-engine';
 
 interface SettingsPageProps {
@@ -518,6 +521,43 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               </p>
             </div>
           )}
+
+          {/* Demo Data & Store Reset */}
+          <div className="bg-surface rounded-2xl border border-slate-200 shadow-xs p-5 text-xs">
+            <div className="flex items-center gap-2 font-bold text-slate-900 mb-2">
+              <Trash2 className="w-4 h-4 text-rose-500" />
+              <span>Store Data & Demo Mode</span>
+            </div>
+            <p className="text-slate-500 mb-4 leading-relaxed">
+              Clear demo products, sample khata debtor accounts, and test invoices to start taking real customer payments with a clean slate.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={async () => {
+                  if (confirm('Are you sure you want to clear all demo data and start with a fresh blank store?')) {
+                    await clearDemoData();
+                    window.location.reload();
+                  }
+                }}
+                className="w-full py-2.5 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-bold text-xs transition-colors flex items-center justify-center gap-2"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Clear Demo Data (Start Fresh Store)</span>
+              </button>
+              <button
+                onClick={async () => {
+                  if (confirm('Load demo kirana & pharmacy products, dummy customers, and sample bills?')) {
+                    await seedDemoData();
+                    window.location.reload();
+                  }
+                }}
+                className="w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors flex items-center justify-center gap-2"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Re-Load Demo Store Data</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -30,11 +30,21 @@ export const App: React.FC = () => {
           setCurrentLang(meta.value.language);
         }
       } else {
-        // Auto-seed demo on first launch so user immediately sees a working app
-        await seedDemoData();
-        const seededMeta = await db.meta.get('shop_profile');
-        if (seededMeta && seededMeta.value) {
-          setShopProfile(seededMeta.value);
+        const wasCleared = localStorage.getItem('shopbill_demo_cleared');
+        if (!wasCleared) {
+          // Auto-seed demo on first launch so user immediately sees a working app
+          await seedDemoData();
+          const seededMeta = await db.meta.get('shop_profile');
+          if (seededMeta && seededMeta.value) {
+            setShopProfile(seededMeta.value);
+          }
+        } else {
+          const freshProfile = {
+            name: 'My Store',
+            demo_mode: false,
+            language: 'en',
+          };
+          setShopProfile(freshProfile);
         }
       }
     } catch (err) {

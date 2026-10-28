@@ -23,11 +23,13 @@ export const Header: React.FC<HeaderProps> = ({
       if (confirm('Are you sure you want to clear demo data and start your real shop?')) {
         await clearDemoData();
         onReloadData();
+        window.location.reload();
       }
     } else {
       if (confirm('Load demo products, customers and transactions?')) {
         await seedDemoData();
         onReloadData();
+        window.location.reload();
       }
     }
   };

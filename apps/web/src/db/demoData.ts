@@ -243,6 +243,7 @@ export const SAMPLE_PARTIES: Omit<PartyRecord, 'updated_at'>[] = [
 ];
 
 export async function seedDemoData(): Promise<void> {
+  localStorage.removeItem('shopbill_demo_cleared');
   const now = new Date().toISOString();
 
   // Clear existing data cleanly
@@ -388,7 +389,44 @@ export async function clearDemoData(): Promise<void> {
       await db.ledger_entries.clear();
       await db.held_bills.clear();
       await db.counters.clear();
-      await db.meta.clear();
+
+      // Overwrite meta with a clean real shop profile so App.tsx does not auto-re-seed
+      const currentMeta = await db.meta.get('shop_profile');
+      const prevProfile = currentMeta?.value;
+      const cleanName =
+        prevProfile?.name && prevProfile.name !== 'Gupta Kirana & General Store'
+          ? prevProfile.name
+          : 'My Store';
+
+      await db.meta.put({
+        key: 'shop_profile',
+        value: {
+          name: cleanName,
+          tagline: '',
+          address: '',
+          phone: '',
+          gstin: '',
+          state_code: '19',
+          state_name: 'West Bengal',
+          tax_scheme: 'REGULAR',
+          invoice_prefix: 'SB/26-27/',
+          upi_id: '',
+          language: prevProfile?.language || 'en',
+          onboarding_complete: true,
+          demo_mode: false,
+        },
+      });
+
+      // Initialize clean counter starting at invoice #1
+      await db.counters.put({
+        series_doc_fy: 'DEFAULT:TAX_INVOICE:2026-2027',
+        series: 'DEFAULT',
+        doc_type: 'TAX_INVOICE',
+        financial_year: '2026-2027',
+        next_number: 1,
+      });
     }
   );
+
+  localStorage.setItem('shopbill_demo_cleared', 'true');
 }
