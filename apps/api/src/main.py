@@ -26,6 +26,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from fastapi.responses import RedirectResponse, Response
+
+# -----------------------------------------------------------------------------
+# Root & Favicon Handlers
+# -----------------------------------------------------------------------------
+
+@app.get("/", tags=["Root"], summary="API Root - Redirects to Swagger Docs")
+async def root():
+    """Redirect root access to interactive API documentation."""
+    return RedirectResponse(url="/docs")
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    """Handle browser favicon request cleanly with 204 No Content."""
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
 # -----------------------------------------------------------------------------
 # Health and Diagnostics Endpoints
 # -----------------------------------------------------------------------------
