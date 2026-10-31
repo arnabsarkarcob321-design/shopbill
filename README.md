@@ -23,6 +23,8 @@
 * **Day-Close Cash Drawer Audit:** Daily reconciliation comparing physical counted cash against recorded transactions with surplus/shortage variance tracking and session locking.
 * **Multi-Format Receipt Printing:** Thermal 80mm/58mm ESC/POS formatting, A4/A5 full invoices, and raw receipt preview.
 * **Bank-Grade Local Backups:** Client-side PBKDF2 (600,000 rounds) + AES-256-GCM encrypted backup export (`.shopbill.enc`) and 1-click restore.
+* **Automated Stock PDF Upload & Parsing:** Fast client-side invoice parsing (`pdfjs-dist`) for Tally, Busy, and GST tax invoices. Auto-extracts product names, multi-line titles, 4-8 digit HSN codes, units, and rates with duplicate detection and stock incrementing.
+* **1-Click Excel Inventory Export:** Instant `.xlsx` spreadsheet download (`Product_Stock_List_[Date].xlsx`) with auto-sized column widths, stock status flags, and tax rates.
 * **Multilingual UI:** Instant 1-click switching between **English**, **हिन्दी (Hindi)**, and **বাংলা (Bengali)**.
 
 ---

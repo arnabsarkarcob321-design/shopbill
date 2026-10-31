@@ -66,4 +66,8 @@ scratch/
 *.log
 *.shopbill.enc
 *.exe
+*.xlsx
+~$*
+*.zip
+*.csv
 
