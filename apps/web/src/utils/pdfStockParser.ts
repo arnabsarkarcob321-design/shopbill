@@ -68,6 +68,45 @@ export async function parseStockPdf(file: File): Promise<ParseResult> {
   const allStructuredLines: string[] = [];
   let expectedSl = 1;
 
+  // Patterns indicating the table rows have ended and footer begins
+  const footerPatterns = [
+    /^(Total|Total:)\b/i,
+    /^(CGST|SGST|IGST|UTGST)\b/i,
+    /^(Round\s*Off|R\/O)\b/i,
+    /^(Taxable|Taxable\s+Value)/i,
+    /^Tax\s+Amount/i,
+    /^Amount\s+Chargeable/i,
+    /^Company'?s\s+Bank\s+Details/i,
+    /^Bank\s+Name/i,
+    /^A\/c\s+No/i,
+    /^Branch\s+&\s+IFS/i,
+    /^Declaration/i,
+    /^We\s+declare/i,
+    /^Authorised\s+Signatory/i,
+    /^This\s+is\s+a\s+Computer/i,
+    /^\d{1,3}(,\d{2,3})+(?:\.\d{2})?\s*$/, // formatted grand total amount like 82,372.83 or 1,12,017.80
+  ];
+
+  // Patterns to ignore top-level headers
+  const headerIgnorePatterns = [
+    /^INVOICE/i,
+    /^Tax\s+Invoice/i,
+    /^Consignee/i,
+    /^Buyer/i,
+    /^State\s+Name/i,
+    /^GSTIN/i,
+    /^Invoice\s+No/i,
+    /^Delivery\s+Note/i,
+    /^Reference\s+No/i,
+    /^Dispatch/i,
+    /^Terms\s+of/i,
+    /^Sl\s+Description/i,
+    /^Sr\.\s*No/i,
+    /^No\.\s*$/i,
+    /^continued/i,
+    /^INR\s+/i,
+  ];
+
   for (let pageNum = 1; pageNum <= numPages; pageNum++) {
     const page = await pdf.getPage(pageNum);
     const textContent = await page.getTextContent();
@@ -85,7 +124,7 @@ export async function parseStockPdf(file: File): Promise<ParseResult> {
     // Group items with similar Y into horizontal lines
     const lineBuckets: { y: number; items: RawLineItem[] }[] = [];
     for (const item of rawItems) {
-      let bucket = lineBuckets.find((b) => Math.abs(b.y - item.y) <= 3.5);
+      let bucket = lineBuckets.find((b) => Math.abs(b.y - item.y) <= 4.0);
       if (!bucket) {
         bucket = { y: item.y, items: [] };
         lineBuckets.push(bucket);
@@ -105,7 +144,7 @@ export async function parseStockPdf(file: File): Promise<ParseResult> {
       // Extract metadata on first page
       if (pageNum === 1) {
         if (!supplierName) {
-          const supMatch = lineStr.match(/(?:Maa Sales|OM GALAXY LIMITED|[A-Z\s]{4,}(?:LTD|LIMITED|TRADERS|ENTERPRISES|SALES))/i);
+          const supMatch = lineStr.match(/(?:JAL KENDRA|Maa Sales|OM GALAXY LIMITED|[A-Z\s]{4,}(?:LTD|LIMITED|TRADERS|ENTERPRISES|SALES|KENDRA))/i);
           if (supMatch && !lineStr.includes('Buyer') && !lineStr.includes('Consignee') && !lineStr.includes('INVOICE') && !lineStr.includes('State Name')) {
             supplierName = supMatch[0]?.trim();
           }
@@ -114,6 +153,11 @@ export async function parseStockPdf(file: File): Promise<ParseResult> {
           const invMatch = lineStr.match(/(?:Invoice\s*No\.?|Bill\s*No\.?)\s*[:.]?\s*([A-Za-z0-9\/-]+)/i);
           if (invMatch && invMatch[1]) {
             invoiceNumber = invMatch[1];
+          } else {
+            const codeMatch = lineStr.match(/\b([A-Z0-9]{2,}\/[0-9-]+\/\d+)\b/);
+            if (codeMatch && codeMatch[1]) {
+              invoiceNumber = codeMatch[1];
+            }
           }
         }
         if (!invoiceDate) {
@@ -127,28 +171,44 @@ export async function parseStockPdf(file: File): Promise<ParseResult> {
 
     // Process page lines into candidate table rows
     let currentRow: ExtractedRow | null = null;
+    let inFooter = false;
 
     for (const line of pageLines) {
       const trimmed = line.trim();
       if (!trimmed) continue;
 
-      // Ignore common header / footer lines
-      if (/^(INVOICE|Consignee|Buyer|State Name|GSTIN|Invoice No|Delivery|Reference|Dispatch|Terms|Sl\s+Description|Sr\.\s*No|Total|continued|This is a Computer|Amount Chargeable|INR\s+|HSN\/SAC\s+|Tax Amount|Declaration|Bank Details|Certified that)/i.test(trimmed)) {
+      // Stop collecting rows once footer is reached on this page
+      if (inFooter) {
+        continue;
+      }
+
+      // Check if line is a table footer / summary boundary
+      if (footerPatterns.some((p) => p.test(trimmed))) {
+        if (currentRow) {
+          extractedRows.push(currentRow);
+          currentRow = null;
+        }
+        inFooter = true;
+        continue;
+      }
+
+      // Skip table and document headers
+      if (headerIgnorePatterns.some((p) => p.test(trimmed))) {
         continue;
       }
 
       const matchStart = trimmed.match(/^(\d{1,3})\s+(.+)$/);
       if (matchStart && matchStart[1] && matchStart[2]) {
         const slCandidate = parseInt(matchStart[1], 10);
-        const isExpectedSl = slCandidate === expectedSl;
-        const hasItemNumbers = /(PCS|nos|NOS|SET|SETS|KGS|KG|GM|LTR|BOX|PKT)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)/i.test(trimmed);
+        const rest = matchStart[2];
+        const hasItemPattern = /(PCS|nos|NOS|SET|SETS|KGS|KG|GM|LTR|BOX|PKT)\b/i.test(rest);
 
-        if (isExpectedSl || hasItemNumbers) {
+        if (slCandidate === expectedSl || (slCandidate > 0 && slCandidate <= 200 && hasItemPattern)) {
           if (currentRow) extractedRows.push(currentRow);
           expectedSl = slCandidate + 1;
           currentRow = {
             sl: slCandidate,
-            mainLine: matchStart[2],
+            mainLine: rest,
             descContinuation: [],
           };
           continue;
@@ -156,9 +216,7 @@ export async function parseStockPdf(file: File): Promise<ParseResult> {
       }
 
       if (currentRow) {
-        if (!/^(Total|R\/O|IGST|CGST|SGST|\d+,\d+)/i.test(trimmed)) {
-          currentRow.descContinuation.push(trimmed);
-        }
+        currentRow.descContinuation.push(trimmed);
       }
     }
 
@@ -207,26 +265,25 @@ function parseSingleRow(
   r: { sl: number; mainLine: string; descContinuation: string[] },
   existingProducts: ProductRecord[]
 ): ParsedProductItem | null {
-  // Pattern 1: Tally / Maa Sales format
-  // Format: [Description] [HSN] [Qty] [Unit] [RateInclTax] [Rate] [per] [Amount]
-  const maaPattern = /(\b\d{6,8}\b)?\s*(\d+(?:\.\d+)?)\s*(PCS|nos|NOS|SET|SETS|KGS|KG|GM|LTR|BOX|PKT)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(?:PCS|nos|NOS|SET|SETS|KGS|KG|GM|LTR|BOX|PKT)\s+([0-9,]+(?:\.\d+)?)$/i;
-  
-  const m = r.mainLine.match(maaPattern);
-  if (m && m.index !== undefined && m[2] && m[3] && m[4] && m[5]) {
-    const descBefore = r.mainLine.substring(0, m.index).trim();
-    const hsn = m[1] || '96039000';
-    const qty = parseFloat(m[2]);
-    const unit = m[3].toUpperCase();
-    const rateInclTax = parseFloat(m[4]);
-    const rate = parseFloat(m[5]);
+  const line = r.mainLine;
+  const unitPattern = /\b(PCS|nos|NOS|SET|SETS|KGS|KG|GM|LTR|BOX|PKT|MTR|DOZ)\b/i;
 
-    const fullName = cleanProductName(`${descBefore} ${r.descContinuation.join(' ')}`);
-    const category = inferCategoryFromName(fullName);
+  // Pattern 1: Tally Dual-Rate format (Maa Sales)
+  // [Desc] [HSN] [Qty] [Unit] [RateInclTax] [RateExclTax] [Unit] [Amount]
+  const format1Regex = /(\b\d{4,8}\b)?\s*(\d+(?:\.\d+)?)\s*(PCS|nos|NOS|SET|SETS|KGS|KG|GM|LTR|BOX|PKT)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(?:PCS|nos|NOS|SET|SETS|KGS|KG|GM|LTR|BOX|PKT)\s+([0-9,]+(?:\.\d+)?)$/i;
+  const m1 = line.match(format1Regex);
+  if (m1 && m1.index !== undefined && m1[2] && m1[3] && m1[4] && m1[5]) {
+    const desc = line.substring(0, m1.index).trim();
+    const hsn = m1[1] || '96039000';
+    const qty = parseFloat(m1[2]);
+    const unit = m1[3].toUpperCase();
+    const rateInclTax = parseFloat(m1[4]);
+    const rateExclTax = parseFloat(m1[5]);
+    const fullName = cleanProductName(`${desc} ${r.descContinuation.join(' ')}`);
 
-    // Calculate GST rate from purchase rate and rate incl. of tax
-    let gstRateBps = 1800; // default 18%
-    if (rate > 0 && rateInclTax > rate) {
-      const calcPct = Math.round(((rateInclTax - rate) / rate) * 100);
+    let gstRateBps = 1800;
+    if (rateExclTax > 0 && rateInclTax > rateExclTax) {
+      const calcPct = Math.round(((rateInclTax - rateExclTax) / rateExclTax) * 100);
       if ([0, 5, 12, 18, 28].includes(calcPct)) {
         gstRateBps = calcPct * 100;
       }
@@ -240,11 +297,11 @@ function parseSingleRow(
       hsn_sac: hsn,
       quantity: Math.max(1, qty),
       unit,
-      purchasePrice: Math.max(0, rate),
+      purchasePrice: Math.max(0, rateExclTax),
       mrp: Math.max(0, rateInclTax),
       sellingPrice: Math.max(0, rateInclTax),
       gstRateBps,
-      category,
+      category: inferCategoryFromName(fullName),
       selected: true,
     };
 
@@ -252,16 +309,51 @@ function parseSingleRow(
     return item;
   }
 
-  // Pattern 2: Om Galaxy / Standard Tax Invoice format
-  // Format: [Description] [HSN] [MRP] [Qty] [Unit] [Rate] [Taxable Value] [CGST %] ...
-  const hsnMatch = r.mainLine.match(/\b([5-9]\d{5,7}|6805\d{4}|7323\d{4}|9603\d{3,4}|8302\d{4}|998\d{3})\b/);
+  // Pattern 2: Standard Tally / Jal Kendra format
+  // [Desc] [HSN] [Qty] [Unit] [Rate] [per Unit] [optional Disc%] [Amount]
+  const format2Regex = /(\b\d{4,8}\b)?\s*(\d+(?:\.\d+)?)\s*(PCS|nos|NOS|SET|SETS|KGS|KG|GM|LTR|BOX|PKT)\s+([0-9,]+(?:\.\d+)?)\s+(?:PCS|nos|NOS|SET|SETS|KGS|KG|GM|LTR|BOX|PKT)(?:\s+\d+(?:\.\d+)?%?)?\s+([0-9,]+(?:\.\d+)?)$/i;
+  const m2 = line.match(format2Regex);
+  if (m2 && m2.index !== undefined && m2[2] && m2[3] && m2[4]) {
+    const desc = line.substring(0, m2.index).trim();
+    const hsn = m2[1] || '84818020';
+    const qty = parseFloat(m2[2]);
+    const unit = m2[3].toUpperCase();
+    const rate = parseFloat(m2[4].replace(/,/g, ''));
+    const fullName = cleanProductName(`${desc} ${r.descContinuation.join(' ')}`);
+
+    // Standard retail margin 18% GST on purchase rate for selling price
+    const sellingPrice = Math.round(rate * 1.18 * 100) / 100;
+
+    const item: ParsedProductItem = {
+      id: `pdf-item-${r.sl}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      slNo: r.sl,
+      name: fullName,
+      sku: `SKU-${hsn.slice(-4)}-${String(r.sl).padStart(3, '0')}`,
+      hsn_sac: hsn,
+      quantity: Math.max(1, qty),
+      unit,
+      purchasePrice: Math.max(0, rate),
+      mrp: Math.max(0, sellingPrice),
+      sellingPrice: Math.max(0, sellingPrice),
+      gstRateBps: 1800,
+      category: inferCategoryFromName(fullName),
+      selected: true,
+    };
+
+    attachExistingMatch(item, existingProducts);
+    return item;
+  }
+
+  // Pattern 3: Standard Tax Invoice format (Om Galaxy)
+  // [Desc] [HSN] [MRP] [Qty] [Unit] [Rate] [Taxable Value] ...
+  const hsnMatch = line.match(/\b([1-9]\d{3,7})\b/);
   if (hsnMatch && hsnMatch.index !== undefined && hsnMatch[0]) {
-    const descBefore = r.mainLine.substring(0, hsnMatch.index).trim();
-    const afterHsn = r.mainLine.substring(hsnMatch.index + hsnMatch[0].length).trim();
+    const descBefore = line.substring(0, hsnMatch.index).trim();
+    const afterHsn = line.substring(hsnMatch.index + hsnMatch[0].length).trim();
     const hsn = hsnMatch[0];
 
     const fullName = cleanProductName(`${descBefore} ${r.descContinuation.join(' ')}`);
-    const unitMatch = afterHsn.match(/\b(PCS|nos|NOS|SET|SETS|KGS|KG|GM|LTR|BOX|PKT)\b/i);
+    const unitMatch = afterHsn.match(unitPattern);
     const unit = unitMatch && unitMatch[0] ? unitMatch[0].toUpperCase() : 'PCS';
 
     const numbers = (afterHsn.replace(/,/g, '').match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
@@ -351,12 +443,27 @@ function cleanProductName(raw: string): string {
 }
 
 /**
- * Suggests a retail category based on common Indian kirana/household product keywords
+ * Suggests a retail category based on common Indian retail / kirana / hardware product keywords
  */
 function inferCategoryFromName(name: string): string {
   const lower = name.toLowerCase();
   if (lower.includes('brush') || lower.includes('wiper') || lower.includes('mop') || lower.includes('scrubber') || lower.includes('dustpan') || lower.includes('broom') || lower.includes('plunger') || lower.includes('clean')) {
     return 'Cleaning & Household';
+  }
+  if (
+    lower.includes('cock') ||
+    lower.includes('swan') ||
+    lower.includes('pillar') ||
+    lower.includes('suit') ||
+    lower.includes('urinal') ||
+    lower.includes('tap') ||
+    lower.includes('pipe') ||
+    lower.includes('valve') ||
+    lower.includes('faucet') ||
+    lower.includes('plumb') ||
+    lower.includes('sanitary')
+  ) {
+    return 'Sanitary & Hardware';
   }
   if (lower.includes('oil') || lower.includes('ghee') || lower.includes('atta') || lower.includes('flour') || lower.includes('salt') || lower.includes('sugar') || lower.includes('rice') || lower.includes('dal')) {
     return 'Groceries / Kirana';
