@@ -1,7 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, AlertTriangle, Edit, X } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Plus,
+  Search,
+  Filter,
+  AlertTriangle,
+  Edit,
+  X,
+  FileSpreadsheet,
+  FileUp,
+  CheckCircle2,
+  Loader2,
+} from 'lucide-react';
 import { db, ProductRecord } from '../db';
 import { formatCurrency, formatQuantity } from '@shopbill/i18n';
+import { exportProductsToExcel } from '../utils/excelExporter';
+import { parseStockPdf, ParseResult } from '../utils/pdfStockParser';
+import { PdfImportModal } from '../components/PdfImportModal';
 
 export const ProductsPage: React.FC = () => {
   const [products, setProducts] = useState<ProductRecord[]>([]);
@@ -9,6 +23,16 @@ export const ProductsPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductRecord | null>(null);
+
+  // PDF Import State
+  const [isParsingPdf, setIsParsingPdf] = useState(false);
+  const [parseResult, setParseResult] = useState<ParseResult | null>(null);
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+  const [toastNotification, setToastNotification] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form State
   const [name, setName] = useState('');
@@ -32,6 +56,29 @@ export const ProductsPage: React.FC = () => {
   useEffect(() => {
     loadProducts();
   }, []);
+
+  // F2 Shortcut to Add Product
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F2') {
+        e.preventDefault();
+        handleOpenAdd();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Auto-dismiss toast notification
+  useEffect(() => {
+    if (toastNotification) {
+      const timer = setTimeout(() => {
+        setToastNotification(null);
+      }, 6000);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [toastNotification]);
 
   const handleOpenAdd = () => {
     setEditingProduct(null);
@@ -105,6 +152,80 @@ export const ProductsPage: React.FC = () => {
     await db.products.put(record);
     setIsAddModalOpen(false);
     loadProducts();
+    setToastNotification({
+      type: 'success',
+      message: `Product "${name.trim()}" saved successfully!`,
+    });
+  };
+
+  // Trigger Excel Export
+  const handleExportToExcel = () => {
+    if (products.length === 0) {
+      alert('There are no products in the catalogue to export.');
+      return;
+    }
+    // Export either filtered list or all products
+    const itemsToExport = filtered.length > 0 ? filtered : products;
+    exportProductsToExcel(itemsToExport);
+    setToastNotification({
+      type: 'success',
+      message: `Exported ${itemsToExport.length} products to Excel spreadsheet!`,
+    });
+  };
+
+  // Trigger Stock PDF file upload
+  const handlePdfUploadTrigger = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+      fileInputRef.current.click();
+    }
+  };
+
+  // Process uploaded PDF
+  const handlePdfFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      alert('Please upload a valid PDF document.');
+      return;
+    }
+
+    setIsParsingPdf(true);
+    try {
+      const result = await parseStockPdf(file);
+      if (result.items.length === 0) {
+        setToastNotification({
+          type: 'error',
+          message:
+            result.errors[0] ||
+            'No product rows could be detected in the uploaded PDF. Please make sure it is a text-based invoice/stock PDF.',
+        });
+      } else {
+        setParseResult(result);
+        setIsPdfModalOpen(true);
+      }
+    } catch (err: any) {
+      console.error('Error parsing PDF invoice:', err);
+      setToastNotification({
+        type: 'error',
+        message: `Failed to parse PDF: ${err?.message || 'Unknown error occurred'}`,
+      });
+    } finally {
+      setIsParsingPdf(false);
+    }
+  };
+
+  const handleImportSuccess = (summary: {
+    total: number;
+    newCount: number;
+    updatedCount: number;
+  }) => {
+    loadProducts();
+    setToastNotification({
+      type: 'success',
+      message: `Successfully imported ${summary.total} products (${summary.newCount} new added, ${summary.updatedCount} stock quantities updated)!`,
+    });
   };
 
   const categories = Array.from(new Set(products.map((p) => p.category)));
@@ -125,24 +246,93 @@ export const ProductsPage: React.FC = () => {
 
   return (
     <div className="flex-1 p-4 md:p-6 bg-canvas overflow-auto">
+      {/* Toast Notification Banner */}
+      {toastNotification && (
+        <div
+          className={`mb-4 p-3.5 rounded-xl border flex items-center justify-between gap-3 shadow-md transition-all animate-in fade-in slide-in-from-top-2 duration-200 ${
+            toastNotification.type === 'success'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+              : 'bg-rose-50 border-rose-200 text-rose-900'
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            {toastNotification.type === 'success' ? (
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+            )}
+            <p className="text-xs sm:text-sm font-bold">{toastNotification.message}</p>
+          </div>
+          <button
+            onClick={() => setToastNotification(null)}
+            className="p-1 hover:bg-black/5 rounded-lg text-slate-500"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Hidden File Input for PDF */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept="application/pdf,.pdf"
+        onChange={handlePdfFileChange}
+        className="hidden"
+      />
+
       {/* Top Action Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
             Products & Live Stock
           </h2>
           <p className="text-xs text-slate-500 font-medium">
-            Manage catalogue, barcode SKUs, HSN codes, and stock thresholds
+            Manage catalogue, barcode SKUs, HSN codes, and stock thresholds ({products.length} listed items)
           </p>
         </div>
 
-        <button
-          onClick={handleOpenAdd}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add New Product [F2]</span>
-        </button>
+        {/* Action Buttons: Export Excel, Upload Stock PDF, Add New Product */}
+        <div className="flex items-center gap-2.5 flex-wrap w-full md:w-auto">
+          {/* Export to Excel */}
+          <button
+            onClick={handleExportToExcel}
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs shadow-2xs hover:border-slate-400 transition-all cursor-pointer"
+            title="Download full product catalogue as .xlsx spreadsheet"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            <span>Export to Excel</span>
+          </button>
+
+          {/* Upload Stock PDF */}
+          <button
+            onClick={handlePdfUploadTrigger}
+            disabled={isParsingPdf}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
+            title="Auto-extract and import stock items from billing invoice PDF"
+          >
+            {isParsingPdf ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                <span>Reading PDF...</span>
+              </>
+            ) : (
+              <>
+                <FileUp className="w-4 h-4 text-blue-600" />
+                <span>Upload Stock PDF</span>
+              </>
+            )}
+          </button>
+
+          {/* Manual Add Product */}
+          <button
+            onClick={handleOpenAdd}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add New Product [F2]</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
@@ -194,8 +384,13 @@ export const ProductsPage: React.FC = () => {
             <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400">
-                    No products found matching your search.
+                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <p className="font-semibold">No products found matching your search or filters.</p>
+                      <p className="text-xs text-slate-400">
+                        Use "Upload Stock PDF" to bulk-import items or click "Add New Product" to create one manually.
+                      </p>
+                    </div>
                   </td>
                 </tr>
               ) : (
@@ -237,7 +432,7 @@ export const ProductsPage: React.FC = () => {
                       <td className="py-3 px-4 text-center">
                         <button
                           onClick={() => handleOpenEdit(p)}
-                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded cursor-pointer"
                           title="Edit Product"
                         >
                           <Edit className="w-3.5 h-3.5" />
@@ -252,7 +447,17 @@ export const ProductsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Add / Edit Product Modal */}
+      {/* PDF Import Preview & Duplicate Handling Modal */}
+      {isPdfModalOpen && parseResult && (
+        <PdfImportModal
+          parseResult={parseResult}
+          isOpen={isPdfModalOpen}
+          onClose={() => setIsPdfModalOpen(false)}
+          onImportComplete={handleImportSuccess}
+        />
+      )}
+
+      {/* Add / Edit Product Modal (Preserved Manual Entry) */}
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-surface rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 overflow-y-auto max-h-[90vh]">
@@ -262,7 +467,7 @@ export const ProductsPage: React.FC = () => {
               </h3>
               <button
                 onClick={() => setIsAddModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600"
+                className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -334,6 +539,8 @@ export const ProductsPage: React.FC = () => {
                     className="w-full p-2 border border-slate-300 rounded-lg text-xs font-semibold"
                   >
                     <option value="packet">packet</option>
+                    <option value="PCS">PCS</option>
+                    <option value="nos">nos</option>
                     <option value="kg">kg</option>
                     <option value="g">g</option>
                     <option value="litre">litre</option>
@@ -421,7 +628,7 @@ export const ProductsPage: React.FC = () => {
               <div className="pt-3">
                 <button
                   type="submit"
-                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition-all"
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer"
                 >
                   Save Product to Local Master
                 </button>
