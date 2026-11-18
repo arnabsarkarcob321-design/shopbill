@@ -1,8 +1,8 @@
 import React from 'react';
-import { ShoppingCart, Package, BookOpen, BarChart3, Settings } from 'lucide-react';
+import { ShoppingCart, Package, BookOpen, BarChart3, Settings, Calculator, Building2 } from 'lucide-react';
 import { translations, SupportedLanguage } from '@shopbill/i18n';
 
-export type NavTab = 'pos' | 'products' | 'ledgers' | 'reports' | 'settings';
+export type NavTab = 'pos' | 'products' | 'ledgers' | 'reports' | 'settings' | 'gst-register' | 'bank-rec';
 
 interface SidebarProps {
   activeTab: NavTab;
@@ -19,6 +19,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, lang }
     { id: 'ledgers' as NavTab, label: t.navKhata, icon: BookOpen, shortcut: 'F3' },
     { id: 'reports' as NavTab, label: t.navReports, icon: BarChart3, shortcut: 'F4' },
     { id: 'settings' as NavTab, label: 'Settings & Backup', icon: Settings, shortcut: 'F5' },
+    { id: 'gst-register' as NavTab, label: 'GST Register', icon: Calculator, shortcut: 'F6' },
+    { id: 'bank-rec' as NavTab, label: 'Bank Reconciliation', icon: Building2, shortcut: 'F7' },
   ];
 
   return (
@@ -70,31 +72,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, lang }
 
       {/* Mobile Bottom Navigation Bar for Android Screens */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-slate-200 z-30 flex items-center justify-around py-1.5 px-2 shadow-lg no-print">
-        {items.slice(0, 4).map((item) => {
+        {items.slice(0, 5).map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
           return (
             <button
               key={item.id}
               onClick={() => onSelectTab(item.id)}
-              className={`flex flex-col items-center py-1 px-3 rounded-lg text-xs font-semibold ${
+              className={`flex flex-col items-center py-1 px-2.5 rounded-lg text-xs font-semibold ${
                 isActive ? 'text-blue-600' : 'text-slate-500'
               }`}
             >
               <Icon className="w-5 h-5 mb-0.5" />
-              <span className="text-[11px] truncate max-w-[70px]">{item.label}</span>
+              <span className="text-[10px] truncate max-w-[65px]">{item.label}</span>
             </button>
           );
         })}
-        <button
-          onClick={() => onSelectTab('settings')}
-          className={`flex flex-col items-center py-1 px-3 rounded-lg text-xs font-semibold ${
-            activeTab === 'settings' ? 'text-blue-600' : 'text-slate-500'
-          }`}
-        >
-          <Settings className="w-5 h-5 mb-0.5" />
-          <span className="text-[11px]">Settings</span>
-        </button>
       </nav>
     </>
   );

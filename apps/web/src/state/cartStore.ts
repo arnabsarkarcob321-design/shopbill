@@ -16,7 +16,12 @@ export interface CartLineItem extends GstLineInput {
 export interface PaymentEntry {
   mode: 'CASH' | 'UPI' | 'CARD' | 'CHEQUE' | 'CREDIT' | 'OTHER';
   amount_paise: number;
-  reference?: string;
+  reference?: string | undefined;
+}
+
+export interface CartActionResult {
+  success: boolean;
+  message?: string | undefined;
 }
 
 interface CartState {
@@ -33,8 +38,8 @@ interface CartState {
   heldBillsList: HeldBillRecord[];
 
   // Actions
-  addItem: (product: ProductRecord, qtyMilli?: number) => void;
-  updateQuantity: (productId: string, qtyMilli: number) => void;
+  addItem: (product: ProductRecord, qtyMilli?: number) => CartActionResult;
+  updateQuantity: (productId: string, qtyMilli: number) => CartActionResult;
   updateLineDiscount: (
     productId: string,
     discountType: 'PERCENT' | 'AMOUNT',
@@ -60,6 +65,8 @@ interface CartState {
     taxScheme: TaxScheme;
     invoicePrefix: string;
     financialYear: string;
+    customerName?: string | undefined;
+    customerPhone?: string | undefined;
   }) => Promise<{ invoiceNumber: string; grandTotalPaise: number }>;
 }
 
@@ -91,8 +98,25 @@ export const useCartStore = create<CartState>((set, get) => ({
   heldBillsList: [],
 
   addItem: (product: ProductRecord, qtyMilli = 1000) => {
+    const currentStock = product.current_stock_milli ?? 0;
+    if (currentStock <= 0) {
+      return {
+        success: false,
+        message: `"${product.name}" is currently Out of Stock (0 ${product.unit} available).`,
+      };
+    }
+
     const { lines, selectedParty, documentType, invoiceDiscountType, invoiceDiscountValue } = get();
     const existingIndex = lines.findIndex((l) => l.product_id === product.id);
+
+    const existingQty = existingIndex >= 0 ? lines[existingIndex]!.quantity_milli : 0;
+    if (existingQty + qtyMilli > currentStock) {
+      const availUnits = (currentStock / 1000).toFixed(0);
+      return {
+        success: false,
+        message: `Cannot add more than available stock (${availUnits} ${product.unit}) for "${product.name}".`,
+      };
+    }
 
     let updatedLines: CartLineItem[];
     if (existingIndex >= 0) {
@@ -126,14 +150,24 @@ export const useCartStore = create<CartState>((set, get) => ({
       invoiceDiscountValue
     );
     set({ lines: updatedLines, calculation });
+    return { success: true };
   },
 
   updateQuantity: (productId: string, qtyMilli: number) => {
     if (qtyMilli <= 0) {
       get().removeItem(productId);
-      return;
+      return { success: true };
     }
     const { lines, selectedParty, documentType, invoiceDiscountType, invoiceDiscountValue } = get();
+    const line = lines.find((l) => l.product_id === productId);
+    if (line && line.current_stock_milli !== undefined && qtyMilli > line.current_stock_milli) {
+      const availUnits = (line.current_stock_milli / 1000).toFixed(0);
+      return {
+        success: false,
+        message: `Requested quantity exceeds available stock (${availUnits} ${line.unit}) for "${line.product_name}".`,
+      };
+    }
+
     const updatedLines = lines.map((l) =>
       l.product_id === productId ? { ...l, quantity_milli: qtyMilli } : l
     );
@@ -145,6 +179,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       invoiceDiscountValue
     );
     set({ lines: updatedLines, calculation });
+    return { success: true };
   },
 
   updateLineDiscount: (
@@ -300,19 +335,34 @@ export const useCartStore = create<CartState>((set, get) => ({
   finaliseInvoice: async (params) => {
     const { lines, selectedParty, documentType, calculation, activeHeldBillId } = get();
     if (lines.length === 0) {
-      throw new Error('Cannot finalise empty cart');
+      throw new Error('Cannot finalise empty cart. Please add products first.');
+    }
+
+    // Step 0: Pre-transaction stock validation across all items
+    for (const l of lines) {
+      const prod = await db.products.get(l.product_id);
+      if (!prod) {
+        throw new Error(`Product "${l.product_name}" is no longer available in catalogue.`);
+      }
+      if (prod.current_stock_milli < l.quantity_milli) {
+        const avail = (prod.current_stock_milli / 1000).toFixed(0);
+        const req = (l.quantity_milli / 1000).toFixed(0);
+        throw new Error(
+          `Insufficient stock for "${prod.name}". Available: ${avail} ${prod.unit}, Requested in Cart: ${req} ${prod.unit}.`
+        );
+      }
     }
 
     const now = new Date().toISOString();
-    const { payments, shopStateCode, invoicePrefix, financialYear } = params;
+    const { payments, shopStateCode, invoicePrefix, financialYear, customerName, customerPhone } = params;
 
     // Calculate payment totals
     const totalPaidPaise = payments.reduce((acc, p) => acc + p.amount_paise, 0);
     const balanceDuePaise = Math.max(0, calculation.grand_total_paise - totalPaidPaise);
 
     // Require customer name for credit/udhaar
-    if (balanceDuePaise > 0 && !selectedParty) {
-      throw new Error('Customer details are required for Udhaar / Credit sales');
+    if (balanceDuePaise > 0 && !selectedParty && !customerName) {
+      throw new Error('Customer details are required for Udhaar / Credit sales.');
     }
 
     let allocatedInvoiceNumber = '';
@@ -355,6 +405,9 @@ export const useCartStore = create<CartState>((set, get) => ({
             ? `SPLIT (${modeList.join(', ')})`
             : modeList[0] || (balanceDuePaise > 0 ? 'CREDIT' : 'CASH');
 
+        const resolvedPartyName = customerName?.trim() || selectedParty?.name || 'Walk-in Customer';
+        const resolvedPartyPhone = customerPhone?.trim() || selectedParty?.phone;
+
         // Step 3: Insert Invoice Header
         const invoiceRecord: InvoiceRecord = {
           id: invoiceId,
@@ -364,8 +417,8 @@ export const useCartStore = create<CartState>((set, get) => ({
           invoice_number: allocatedInvoiceNumber,
           issue_at: now,
           party_id: selectedParty?.id,
-          party_name: selectedParty?.name || 'Walk-in Customer',
-          party_phone: selectedParty?.phone,
+          party_name: resolvedPartyName,
+          party_phone: resolvedPartyPhone,
           party_gstin: selectedParty?.gstin,
           place_of_supply_state_code: selectedParty?.state_code || shopStateCode,
           is_inter_state: calculation.is_inter_state,

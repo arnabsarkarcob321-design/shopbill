@@ -266,28 +266,22 @@ function parseSingleRow(
   existingProducts: ProductRecord[]
 ): ParsedProductItem | null {
   const line = r.mainLine;
-  const unitPattern = /\b(PCS|nos|NOS|SET|SETS|KGS|KG|GM|LTR|BOX|PKT|MTR|DOZ)\b/i;
+  const unitPattern = /\b(PCS|PC\s*S|nos|NOS|SET|SETS|KGS|KG|GM|LTR|BOX|PKT|MTR|DOZ)\b/i;
 
-  // Pattern 1: Tally Dual-Rate format (Maa Sales)
-  // [Desc] [HSN] [Qty] [Unit] [RateInclTax] [RateExclTax] [Unit] [Amount]
-  const format1Regex = /(\b\d{4,8}\b)?\s*(\d+(?:\.\d+)?)\s*(PCS|nos|NOS|SET|SETS|KGS|KG|GM|LTR|BOX|PKT)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(?:PCS|nos|NOS|SET|SETS|KGS|KG|GM|LTR|BOX|PKT)\s+([0-9,]+(?:\.\d+)?)$/i;
+  // Pattern 1: Tally Dual-Rate format (Maa Sales / MRP format)
+  // [Desc] [HSN] [MRP] [Qty] [Unit] [Rate] [Taxable] ...
+  const format1Regex = /(\b\d{4,8}\b)?\s*([0-9,]+(?:\.\d+)?)\s+([0-9,]+(?:\.\d+)?)\s*(PCS|PC\s*S|nos|NOS|SET|SETS|KGS|KG|GM|LTR|BOX|PKT)\s+([0-9,]+(?:\.\d+)?)\s+([0-9,]+(?:\.\d+)?)/i;
   const m1 = line.match(format1Regex);
   if (m1 && m1.index !== undefined && m1[2] && m1[3] && m1[4] && m1[5]) {
     const desc = line.substring(0, m1.index).trim();
     const hsn = m1[1] || '96039000';
-    const qty = parseFloat(m1[2]);
-    const unit = m1[3].toUpperCase();
-    const rateInclTax = parseFloat(m1[4]);
-    const rateExclTax = parseFloat(m1[5]);
+    const mrp = parseFloat(m1[2].replace(/,/g, ''));
+    const qty = parseFloat(m1[3].replace(/,/g, ''));
+    const unit = m1[4].replace(/\s+/g, '').toUpperCase();
+    const rate = parseFloat(m1[5].replace(/,/g, ''));
     const fullName = cleanProductName(`${desc} ${r.descContinuation.join(' ')}`);
 
-    let gstRateBps = 1800;
-    if (rateExclTax > 0 && rateInclTax > rateExclTax) {
-      const calcPct = Math.round(((rateInclTax - rateExclTax) / rateExclTax) * 100);
-      if ([0, 5, 12, 18, 28].includes(calcPct)) {
-        gstRateBps = calcPct * 100;
-      }
-    }
+    const sellingPrice = mrp > 0 ? mrp : Math.round(rate * 1.18 * 100) / 100;
 
     const item: ParsedProductItem = {
       id: `pdf-item-${r.sl}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
@@ -297,10 +291,10 @@ function parseSingleRow(
       hsn_sac: hsn,
       quantity: Math.max(1, qty),
       unit,
-      purchasePrice: Math.max(0, rateExclTax),
-      mrp: Math.max(0, rateInclTax),
-      sellingPrice: Math.max(0, rateInclTax),
-      gstRateBps,
+      purchasePrice: Math.max(0, rate),
+      mrp: Math.max(0, mrp),
+      sellingPrice: Math.max(0, sellingPrice),
+      gstRateBps: 1800,
       category: inferCategoryFromName(fullName),
       selected: true,
     };
@@ -311,13 +305,13 @@ function parseSingleRow(
 
   // Pattern 2: Standard Tally / Jal Kendra format
   // [Desc] [HSN] [Qty] [Unit] [Rate] [per Unit] [optional Disc%] [Amount]
-  const format2Regex = /(\b\d{4,8}\b)?\s*(\d+(?:\.\d+)?)\s*(PCS|nos|NOS|SET|SETS|KGS|KG|GM|LTR|BOX|PKT)\s+([0-9,]+(?:\.\d+)?)\s+(?:PCS|nos|NOS|SET|SETS|KGS|KG|GM|LTR|BOX|PKT)(?:\s+\d+(?:\.\d+)?%?)?\s+([0-9,]+(?:\.\d+)?)$/i;
+  const format2Regex = /(\b\d{4,8}\b)?\s*([0-9,]+(?:\.\d+)?)\s*(PCS|PC\s*S|nos|NOS|SET|SETS|KGS|KG|GM|LTR|BOX|PKT)\s+([0-9,]+(?:\.\d+)?)\s+(?:PCS|PC\s*S|nos|NOS|SET|SETS|KGS|KG|GM|LTR|BOX|PKT)(?:\s+\d+(?:\.\d+)?%?)?\s+([0-9,]+(?:\.\d+)?)$/i;
   const m2 = line.match(format2Regex);
   if (m2 && m2.index !== undefined && m2[2] && m2[3] && m2[4]) {
     const desc = line.substring(0, m2.index).trim();
     const hsn = m2[1] || '84818020';
-    const qty = parseFloat(m2[2]);
-    const unit = m2[3].toUpperCase();
+    const qty = parseFloat(m2[2].replace(/,/g, ''));
+    const unit = m2[3].replace(/\s+/g, '').toUpperCase();
     const rate = parseFloat(m2[4].replace(/,/g, ''));
     const fullName = cleanProductName(`${desc} ${r.descContinuation.join(' ')}`);
 

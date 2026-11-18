@@ -71,3 +71,9 @@ scratch/
 *.zip
 *.csv
 
+# Large models / Cloned repositories / Caches
+PaddleOCR/
+.paddlex/
+temp_uploads/
+
+

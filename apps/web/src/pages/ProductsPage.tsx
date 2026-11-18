@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Plus,
   Search,
@@ -7,32 +7,35 @@ import {
   Edit,
   X,
   FileSpreadsheet,
-  FileUp,
   CheckCircle2,
-  Loader2,
+  Sparkles,
+  ShoppingCart,
 } from 'lucide-react';
 import { db, ProductRecord } from '../db';
 import { formatCurrency, formatQuantity } from '@shopbill/i18n';
 import { exportProductsToExcel } from '../utils/excelExporter';
-import { parseStockPdf, ParseResult } from '../utils/pdfStockParser';
-import { PdfImportModal } from '../components/PdfImportModal';
+import { PaddleOcrModal } from '../components/PaddleOcrModal';
+import { useCartStore } from '../state/cartStore';
 
-export const ProductsPage: React.FC = () => {
+interface ProductsPageProps {
+  onNavigateToPos?: () => void;
+}
+
+export const ProductsPage: React.FC<ProductsPageProps> = ({ onNavigateToPos }) => {
+  const { lines, calculation, addItem } = useCartStore();
+
   const [products, setProducts] = useState<ProductRecord[]>([]);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductRecord | null>(null);
 
-  // PDF Import State
-  const [isParsingPdf, setIsParsingPdf] = useState(false);
-  const [parseResult, setParseResult] = useState<ParseResult | null>(null);
-  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+  // PaddleOCR PDF to Excel State
+  const [isPaddleModalOpen, setIsPaddleModalOpen] = useState(false);
   const [toastNotification, setToastNotification] = useState<{
     type: 'success' | 'error';
     message: string;
   } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form State
   const [name, setName] = useState('');
@@ -173,61 +176,6 @@ export const ProductsPage: React.FC = () => {
     });
   };
 
-  // Trigger Stock PDF file upload
-  const handlePdfUploadTrigger = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-      fileInputRef.current.click();
-    }
-  };
-
-  // Process uploaded PDF
-  const handlePdfFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-      alert('Please upload a valid PDF document.');
-      return;
-    }
-
-    setIsParsingPdf(true);
-    try {
-      const result = await parseStockPdf(file);
-      if (result.items.length === 0) {
-        setToastNotification({
-          type: 'error',
-          message:
-            result.errors[0] ||
-            'No product rows could be detected in the uploaded PDF. Please make sure it is a text-based invoice/stock PDF.',
-        });
-      } else {
-        setParseResult(result);
-        setIsPdfModalOpen(true);
-      }
-    } catch (err: any) {
-      console.error('Error parsing PDF invoice:', err);
-      setToastNotification({
-        type: 'error',
-        message: `Failed to parse PDF: ${err?.message || 'Unknown error occurred'}`,
-      });
-    } finally {
-      setIsParsingPdf(false);
-    }
-  };
-
-  const handleImportSuccess = (summary: {
-    total: number;
-    newCount: number;
-    updatedCount: number;
-  }) => {
-    loadProducts();
-    setToastNotification({
-      type: 'success',
-      message: `Successfully imported ${summary.total} products (${summary.newCount} new added, ${summary.updatedCount} stock quantities updated)!`,
-    });
-  };
-
   const categories = Array.from(new Set(products.map((p) => p.category)));
 
   const filtered = products.filter((p) => {
@@ -272,15 +220,6 @@ export const ProductsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Hidden File Input for PDF */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        accept="application/pdf,.pdf"
-        onChange={handlePdfFileChange}
-        className="hidden"
-      />
-
       {/* Top Action Header */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
         <div>
@@ -292,8 +231,24 @@ export const ProductsPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Action Buttons: Export Excel, Upload Stock PDF, Add New Product */}
+        {/* Action Buttons: Quick Sell & Bill, Export Excel, PDF to Excel (PaddleOCR), Add New Product */}
         <div className="flex items-center gap-2.5 flex-wrap w-full md:w-auto">
+          {/* Active Cart & Go to Billing POS Shortcut */}
+          <button
+            onClick={() => onNavigateToPos?.()}
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-blue-600 bg-blue-50 hover:bg-blue-100 text-blue-900 font-bold text-xs shadow-xs transition-all cursor-pointer"
+            title="Go to POS Billing Counter [F1]"
+          >
+            <ShoppingCart className="w-4 h-4 text-blue-600" />
+            <span>Cart ({lines.length})</span>
+            <span className="font-extrabold text-blue-800 tabular-nums">
+              {formatCurrency(calculation.grand_total_paise)}
+            </span>
+            <span className="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded font-mono">
+              Billing [F1]
+            </span>
+          </button>
+
           {/* Export to Excel */}
           <button
             onClick={handleExportToExcel}
@@ -304,30 +259,20 @@ export const ProductsPage: React.FC = () => {
             <span>Export to Excel</span>
           </button>
 
-          {/* Upload Stock PDF */}
+          {/* PaddleOCR: Product PDF to Excel Report */}
           <button
-            onClick={handlePdfUploadTrigger}
-            disabled={isParsingPdf}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
-            title="Auto-extract and import stock items from billing invoice PDF"
+            onClick={() => setIsPaddleModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-blue-600 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all cursor-pointer"
+            title="Upload product PDF to extract items and generate an Excel spreadsheet report using PaddleOCR"
           >
-            {isParsingPdf ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                <span>Reading PDF...</span>
-              </>
-            ) : (
-              <>
-                <FileUp className="w-4 h-4 text-blue-600" />
-                <span>Upload Stock PDF</span>
-              </>
-            )}
+            <Sparkles className="w-4 h-4 text-amber-300" />
+            <span>PDF to Excel (PaddleOCR)</span>
           </button>
 
           {/* Manual Add Product */}
           <button
             onClick={handleOpenAdd}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shadow-md shadow-slate-900/20 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Add New Product [F2]</span>
@@ -430,13 +375,54 @@ export const ProductsPage: React.FC = () => {
                         )}
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <button
-                          onClick={() => handleOpenEdit(p)}
-                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded cursor-pointer"
-                          title="Edit Product"
-                        >
-                          <Edit className="w-3.5 h-3.5" />
-                        </button>
+                        {(() => {
+                          const inCartLine = lines.find((l) => l.product_id === p.id);
+                          const inCartUnits = inCartLine ? inCartLine.quantity_milli / 1000 : 0;
+                          const isOutOfStock = p.current_stock_milli <= 0;
+
+                          return (
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                disabled={isOutOfStock}
+                                onClick={() => {
+                                  const res = addItem(p, 1000);
+                                  if (!res.success) {
+                                    setToastNotification({
+                                      type: 'error',
+                                      message: res.message || 'Cannot add product to cart.',
+                                    });
+                                  } else {
+                                    setToastNotification({
+                                      type: 'success',
+                                      message: `Added "${p.name}" to cart! Click "Billing [F1]" to complete checkout.`,
+                                    });
+                                  }
+                                }}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 font-bold text-[11px] rounded-lg shadow-xs transition-colors cursor-pointer ${
+                                  isOutOfStock
+                                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                                }`}
+                                title={isOutOfStock ? 'Product is out of stock' : `Add ${p.name} to billing cart`}
+                              >
+                                <ShoppingCart className="w-3.5 h-3.5" />
+                                <span>+ Add to Cart</span>
+                                {inCartUnits > 0 && (
+                                  <span className="bg-blue-800 text-white text-[10px] px-1.5 py-0.2 rounded-full font-black">
+                                    {inCartUnits}
+                                  </span>
+                                )}
+                              </button>
+                              <button
+                                onClick={() => handleOpenEdit(p)}
+                                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded cursor-pointer"
+                                title="Edit Product"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          );
+                        })()}
                       </td>
                     </tr>
                   );
@@ -446,16 +432,6 @@ export const ProductsPage: React.FC = () => {
           </table>
         </div>
       </div>
-
-      {/* PDF Import Preview & Duplicate Handling Modal */}
-      {isPdfModalOpen && parseResult && (
-        <PdfImportModal
-          parseResult={parseResult}
-          isOpen={isPdfModalOpen}
-          onClose={() => setIsPdfModalOpen(false)}
-          onImportComplete={handleImportSuccess}
-        />
-      )}
 
       {/* Add / Edit Product Modal (Preserved Manual Entry) */}
       {isAddModalOpen && (
@@ -637,6 +613,13 @@ export const ProductsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* PaddleOCR: Product PDF to Excel Report Modal */}
+      <PaddleOcrModal
+        isOpen={isPaddleModalOpen}
+        onClose={() => setIsPaddleModalOpen(false)}
+        onProductsImported={loadProducts}
+      />
     </div>
   );
 };
