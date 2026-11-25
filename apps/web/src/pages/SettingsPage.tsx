@@ -13,16 +13,20 @@ import {
 import { db } from '../db';
 import { clearDemoData, seedDemoData } from '../db/demoData';
 import { GST_STATE_CODES } from '@shopbill/gst-engine';
+import { translations, SupportedLanguage } from '@shopbill/i18n';
 
 interface SettingsPageProps {
   shopProfile: any;
   onUpdateShopProfile: (newProfile: any) => void;
+  lang?: SupportedLanguage;
 }
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({
   shopProfile,
   onUpdateShopProfile,
+  lang = 'en',
 }) => {
+  const t = translations[lang] || translations.en;
   const [name, setName] = useState(shopProfile?.name || '');
   const [tagline, setTagline] = useState(shopProfile?.tagline || '');
   const [address, setAddress] = useState(shopProfile?.address || '');
@@ -287,7 +291,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       {/* Page Title */}
       <div>
         <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
-          Shop Settings & Security
+          {t.settingsPageTitle}
         </h2>
         <p className="text-xs text-slate-500 font-medium">
           Configure business identity, tax registration, UPI payments, and encrypted backups
@@ -299,40 +303,40 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         <div className="lg:col-span-2 bg-surface rounded-2xl border border-slate-200 shadow-xs p-5 md:p-6">
           <div className="flex items-center gap-2.5 pb-4 border-b border-slate-200 mb-5">
             <Building className="w-5 h-5 text-blue-600" />
-            <h3 className="font-bold text-slate-900 text-sm">Shop & GST Identity</h3>
+            <h3 className="font-bold text-slate-900 text-sm">{t.shopGstIdentityTitle}</h3>
           </div>
 
           <form onSubmit={handleSaveProfile} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Shop Name (Appears on Bills) *
+                {t.shopNameLabel}
               </label>
               <input
                 type="text"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Gupta Kirana & General Store"
+                placeholder={t.shopNamePlaceholder}
                 className="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
               />
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1">
-                Tagline / Slogan
+                {t.taglineLabel}
               </label>
               <input
                 type="text"
                 value={tagline}
                 onChange={(e) => setTagline(e.target.value)}
-                placeholder="e.g. Your Trusted Daily Store"
+                placeholder={t.taglinePlaceholder}
                 className="w-full p-2 border border-slate-300 rounded-lg text-xs"
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Phone *</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">{t.phoneRequiredLabel}</label>
                 <input
                   type="tel"
                   required
@@ -343,7 +347,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Tax Scheme
+                  {t.taxSchemeLabel}
                 </label>
                 <select
                   value={taxScheme}
@@ -360,7 +364,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  GSTIN (If Registered)
+                  {t.gstinIfRegisteredLabel}
                 </label>
                 <input
                   type="text"
@@ -372,7 +376,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  State / Jurisdiction
+                  {t.stateJurisdictionLabel}
                 </label>
                 <select
                   value={stateCode}
@@ -389,12 +393,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Shop Address</label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">{t.shopAddressLabel}</label>
               <textarea
                 rows={2}
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                placeholder="Shop street address, market name, city, pin code"
+                placeholder={t.shopAddressPlaceholder}
                 className="w-full p-2 border border-slate-300 rounded-lg text-xs"
               />
             </div>
@@ -402,7 +406,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Invoice Number Prefix
+                  {t.invoicePrefixLabel}
                 </label>
                 <input
                   type="text"
@@ -414,13 +418,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Shop UPI ID (For Dynamic QR on Bill)
+                  {t.shopUpiIdLabel}
                 </label>
                 <input
                   type="text"
                   value={upiId}
                   onChange={(e) => setUpiId(e.target.value)}
-                  placeholder="name@okaxis / shop@icici"
+                  placeholder={t.shopUpiPlaceholder}
                   className="w-full p-2 border border-slate-300 rounded-lg text-xs font-mono font-bold"
                 />
               </div>
@@ -453,7 +457,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           <div className="bg-surface rounded-2xl border border-slate-200 shadow-xs p-5">
             <div className="flex items-center gap-2 pb-3 border-b border-slate-200 mb-3 text-slate-900 font-bold text-sm">
               <Shield className="w-4 h-4 text-emerald-600" />
-              <span>Encrypted Local Backup (.enc)</span>
+              <span>{t.settingsEncryptedBackupTitle}</span>
             </div>
             <p className="text-xs text-slate-500 mb-4">
               Export an authenticated AES-256-GCM encrypted archive to protect against hardware failure or lost devices.
@@ -462,13 +466,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             <div className="space-y-3">
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  Backup Passphrase (Min 6 chars)
+                  {t.backupPassphraseLabel}
                 </label>
                 <input
                   type="password"
                   value={backupPassphrase}
                   onChange={(e) => setBackupPassphrase(e.target.value)}
-                  placeholder="Enter strong password..."
+                  placeholder={t.backupPassphrasePlaceholder}
                   className="w-full p-2 border border-slate-300 rounded-lg text-xs"
                 />
               </div>
@@ -479,15 +483,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                 className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2"
               >
                 <Download className="w-4 h-4 text-emerald-400" />
-                <span>Export Encrypted Backup</span>
+                <span>{t.settingsExportEncryptedBtn}</span>
               </button>
             </div>
 
             {/* Restore Section */}
             <div className="mt-5 pt-4 border-t border-slate-200">
-              <span className="block text-xs font-bold text-slate-900 mb-2">
-                Restore from Backup
-              </span>
+              <span className="block text-xs font-bold text-slate-900 mb-2">{t.settingsRestoreBackupTitle}</span>
               <div className="space-y-2">
                 <input
                   type="file"
@@ -499,7 +501,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   type="password"
                   value={restorePassphrase}
                   onChange={(e) => setRestorePassphrase(e.target.value)}
-                  placeholder="Passphrase used during export..."
+                  placeholder={t.restorePassphrasePlaceholder}
                   className="w-full p-2 border border-slate-300 rounded-lg text-xs"
                 />
                 <button
@@ -508,7 +510,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   className="w-full py-2 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-40 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5"
                 >
                   <Upload className="w-3.5 h-3.5" />
-                  <span>Decrypt & Restore Shop</span>
+                  <span>{t.settingsDecryptRestoreBtn}</span>
                 </button>
               </div>
             </div>
@@ -556,7 +558,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                 className="w-full py-2.5 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-bold text-xs transition-colors flex items-center justify-center gap-2"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>Clear Demo Data (Start Fresh Store)</span>
+                <span>{t.settingsClearDemoBtn}</span>
               </button>
               <button
                 onClick={async () => {

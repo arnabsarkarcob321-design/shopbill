@@ -1,9 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Filter, AlertTriangle, Edit, X } from 'lucide-react';
 import { db, ProductRecord } from '../db';
+import { translations, SupportedLanguage } from '@shopbill/i18n';
 import { formatCurrency, formatQuantity } from '@shopbill/i18n';
 
-export const ProductsPage: React.FC = () => {
+interface ProductsPageProps {
+  lang?: SupportedLanguage;
+}
+
+export const ProductsPage: React.FC<ProductsPageProps> = ({ lang = 'en' }) => {
+  const t = translations[lang] || translations.en;
   const [products, setProducts] = useState<ProductRecord[]>([]);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -129,10 +135,10 @@ export const ProductsPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
-            Products & Live Stock
+            {t.productsTitle}
           </h2>
           <p className="text-xs text-slate-500 font-medium">
-            Manage catalogue, barcode SKUs, HSN codes, and stock thresholds
+            {t.productsSubtitle}
           </p>
         </div>
 
@@ -141,7 +147,7 @@ export const ProductsPage: React.FC = () => {
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all"
         >
           <Plus className="w-4 h-4" />
-          <span>Add New Product [F2]</span>
+          <span>{t.addNewProduct}</span>
         </button>
       </div>
 
@@ -153,7 +159,7 @@ export const ProductsPage: React.FC = () => {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by product name, barcode, SKU or HSN..."
+            placeholder={t.searchProductsPlaceholder}
             className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600"
           />
         </div>
@@ -165,7 +171,7 @@ export const ProductsPage: React.FC = () => {
             onChange={(e) => setSelectedCategory(e.target.value)}
             className="bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 py-2 px-3 rounded-lg focus:outline-none cursor-pointer"
           >
-            <option value="ALL">All Categories ({products.length})</option>
+            <option value="ALL">{t.allCategoriesOption} ({products.length})</option>
             {categories.map((c) => (
               <option key={c} value={c}>
                 {c}
@@ -181,14 +187,14 @@ export const ProductsPage: React.FC = () => {
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
               <tr>
-                <th className="py-3 px-4">Item Name / Barcode</th>
-                <th className="py-3 px-4">Category</th>
-                <th className="py-3 px-4">HSN Code</th>
-                <th className="py-3 px-4">GST Rate</th>
-                <th className="py-3 px-4 text-right">Selling Price</th>
-                <th className="py-3 px-4 text-right">Stock On Hand</th>
-                <th className="py-3 px-4 text-center">Status</th>
-                <th className="py-3 px-4 text-center">Action</th>
+                <th className="py-3 px-4">{t.prodColItemBarcode}</th>
+                <th className="py-3 px-4">{t.prodColCategory}</th>
+                <th className="py-3 px-4">{t.prodColHsn}</th>
+                <th className="py-3 px-4">{t.prodColGstRate}</th>
+                <th className="py-3 px-4 text-right">{t.prodColSellingPrice}</th>
+                <th className="py-3 px-4 text-right">{t.prodColStockOnHand}</th>
+                <th className="py-3 px-4 text-center">{t.prodColStatus}</th>
+                <th className="py-3 px-4 text-center">{t.prodColAction}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -229,9 +235,7 @@ export const ProductsPage: React.FC = () => {
                             Low Stock
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold text-[10px] border border-emerald-200">
-                            Available
-                          </span>
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold text-[10px] border border-emerald-200">{t.statusAvailable}</span>
                         )}
                       </td>
                       <td className="py-3 px-4 text-center">
@@ -258,7 +262,7 @@ export const ProductsPage: React.FC = () => {
           <div className="bg-surface rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 overflow-y-auto max-h-[90vh]">
             <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-200">
               <h3 className="font-bold text-base text-slate-900">
-                {editingProduct ? 'Edit Product' : 'Add New Product'}
+                {editingProduct ? t.editProductTitle : t.addNewProduct}
               </h3>
               <button
                 onClick={() => setIsAddModalOpen(false)}

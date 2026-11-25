@@ -18,7 +18,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, lang }
     { id: 'products' as NavTab, label: t.navProducts, icon: Package, shortcut: 'F2' },
     { id: 'ledgers' as NavTab, label: t.navKhata, icon: BookOpen, shortcut: 'F3' },
     { id: 'reports' as NavTab, label: t.navReports, icon: BarChart3, shortcut: 'F4' },
-    { id: 'settings' as NavTab, label: 'Settings & Backup', icon: Settings, shortcut: 'F5' },
+    { id: 'settings' as NavTab, label: t.navSettings, icon: Settings, shortcut: 'F5' },
   ];
 
   return (
@@ -93,7 +93,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, lang }
           }`}
         >
           <Settings className="w-5 h-5 mb-0.5" />
-          <span className="text-[11px]">Settings</span>
+          <span className="text-[11px]">{t.settingsShort}</span>
         </button>
       </nav>
     </>

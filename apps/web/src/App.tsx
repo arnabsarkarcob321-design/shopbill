@@ -118,12 +118,12 @@ export const App: React.FC = () => {
         <Sidebar activeTab={activeTab} onSelectTab={setActiveTab} lang={currentLang} />
 
         <main className="flex-1 flex flex-col overflow-hidden pb-16 md:pb-0">
-          {activeTab === 'pos' && <PosPage shopProfile={shopProfile} />}
-          {activeTab === 'products' && <ProductsPage />}
-          {activeTab === 'ledgers' && <LedgersPage shopProfile={shopProfile} />}
-          {activeTab === 'reports' && <ReportsPage shopProfile={shopProfile} />}
+          {activeTab === 'pos' && <PosPage shopProfile={shopProfile} lang={currentLang} />}
+          {activeTab === 'products' && <ProductsPage lang={currentLang} />}
+          {activeTab === 'ledgers' && <LedgersPage shopProfile={shopProfile} lang={currentLang} />}
+          {activeTab === 'reports' && <ReportsPage shopProfile={shopProfile} lang={currentLang} />}
           {activeTab === 'settings' && (
-            <SettingsPage shopProfile={shopProfile} onUpdateShopProfile={setShopProfile} />
+            <SettingsPage shopProfile={shopProfile} onUpdateShopProfile={setShopProfile} lang={currentLang} />
           )}
         </main>
       </div>

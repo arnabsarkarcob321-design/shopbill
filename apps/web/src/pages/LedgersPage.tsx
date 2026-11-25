@@ -9,13 +9,15 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import { db, PartyRecord, LedgerEntryRecord } from '../db';
-import { formatCurrency } from '@shopbill/i18n';
+import { formatCurrency, translations, SupportedLanguage } from '@shopbill/i18n';
 
 interface LedgersPageProps {
   shopProfile: any;
+  lang?: SupportedLanguage;
 }
 
-export const LedgersPage: React.FC<LedgersPageProps> = ({ shopProfile }) => {
+export const LedgersPage: React.FC<LedgersPageProps> = ({ shopProfile, lang = 'en' }) => {
+  const t = translations[lang] || translations.en;
   const [parties, setParties] = useState<PartyRecord[]>([]);
   const [search, setSearch] = useState('');
   const [selectedParty, setSelectedParty] = useState<PartyRecord | null>(null);
@@ -167,9 +169,7 @@ export const LedgersPage: React.FC<LedgersPageProps> = ({ shopProfile }) => {
       {/* 4-Card KPI Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
         <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200 shadow-2xs">
-          <div className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">
-            Total Outstanding Udhaar
-          </div>
+          <div className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">{t.ledgerTotalOutstandingBadge}</div>
           <div className="text-2xl font-black text-amber-900 tabular-nums mt-1">
             {formatCurrency(totalUdhaarPaise)}
           </div>
@@ -179,9 +179,7 @@ export const LedgersPage: React.FC<LedgersPageProps> = ({ shopProfile }) => {
         </div>
 
         <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200 shadow-2xs">
-          <div className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">
-            Customers with Dues
-          </div>
+          <div className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">{t.ledgerCustomersWithDuesBadge}</div>
           <div className="text-2xl font-black text-emerald-900 tabular-nums mt-1">
             {customerCountWithUdhaar}
           </div>
@@ -190,7 +188,7 @@ export const LedgersPage: React.FC<LedgersPageProps> = ({ shopProfile }) => {
 
         <div className="p-4 rounded-xl bg-blue-50/70 border border-blue-200 shadow-2xs">
           <div className="text-[11px] font-bold text-blue-700 uppercase tracking-wider">
-            Total Customer Directory
+            {t.totalCustomerDirectory}
           </div>
           <div className="text-2xl font-black text-blue-900 tabular-nums mt-1">
             {parties.length}
@@ -199,9 +197,7 @@ export const LedgersPage: React.FC<LedgersPageProps> = ({ shopProfile }) => {
         </div>
 
         <div className="p-4 rounded-xl bg-purple-50/70 border border-purple-200 shadow-2xs">
-          <div className="text-[11px] font-bold text-purple-700 uppercase tracking-wider">
-            Automated WhatsApp Reminders
-          </div>
+          <div className="text-[11px] font-bold text-purple-700 uppercase tracking-wider">{t.ledgerWhatsappRemindersBadge}</div>
           <div className="text-2xl font-black text-purple-900 tabular-nums mt-1">
             UPI Active
           </div>
@@ -220,7 +216,7 @@ export const LedgersPage: React.FC<LedgersPageProps> = ({ shopProfile }) => {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search customer by name or phone..."
+                placeholder={t.searchCustomerPlaceholder}
                 className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600"
               />
             </div>
@@ -230,7 +226,7 @@ export const LedgersPage: React.FC<LedgersPageProps> = ({ shopProfile }) => {
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs"
             >
               <Plus className="w-4 h-4" />
-              <span>Add Customer</span>
+              <span>{t.addCustomerBtn}</span>
             </button>
           </div>
 
@@ -238,10 +234,10 @@ export const LedgersPage: React.FC<LedgersPageProps> = ({ shopProfile }) => {
             <table className="w-full text-left text-xs border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
                 <tr>
-                  <th className="py-3 px-4">Customer Name</th>
-                  <th className="py-3 px-4">Phone / GSTIN</th>
-                  <th className="py-3 px-4 text-right">Outstanding Udhaar</th>
-                  <th className="py-3 px-4 text-center">Action</th>
+                  <th className="py-3 px-4">{t.ledgerColCustomerName}</th>
+                  <th className="py-3 px-4">{t.ledgerColPhoneGstin}</th>
+                  <th className="py-3 px-4 text-right">{t.ledgerColOutstanding}</th>
+                  <th className="py-3 px-4 text-center">{t.ledgerColAction}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -294,7 +290,7 @@ export const LedgersPage: React.FC<LedgersPageProps> = ({ shopProfile }) => {
                                 className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs"
                                 title="Collect Cash/UPI"
                               >
-                                Receive
+                                {t.receiveBtn}
                               </button>
                               <a
                                 href={`https://wa.me/${p.phone || ''}?text=${encodeURIComponent(
@@ -329,12 +325,12 @@ export const LedgersPage: React.FC<LedgersPageProps> = ({ shopProfile }) => {
         <div className="w-full lg:w-96 bg-surface rounded-xl border border-slate-200 shadow-xs p-4 flex flex-col shrink-0">
           <div className="pb-3 border-b border-slate-200 mb-3">
             <h3 className="font-bold text-slate-900 text-sm">
-              {selectedParty ? selectedParty.name : 'Select a Customer'}
+              {selectedParty ? selectedParty.name : t.selectCustomerTitle}
             </h3>
             <p className="text-xs text-slate-500">
               {selectedParty
                 ? `Total Due: ${formatCurrency(selectedParty.balance_paise)}`
-                : 'Click any row on the left to view their detailed khata statement'}
+                : t.clickRowKhataHint}
             </p>
           </div>
 
@@ -342,7 +338,7 @@ export const LedgersPage: React.FC<LedgersPageProps> = ({ shopProfile }) => {
             <div className="flex-1 flex flex-col">
               <div className="flex-1 overflow-auto space-y-2 max-h-96 pr-1">
                 {ledgerEntries.length === 0 ? (
-                  <p className="text-xs text-slate-400 text-center py-8">No ledger entries recorded yet.</p>
+                  <p className="text-xs text-slate-400 text-center py-8">{t.noLedgerEntries}</p>
                 ) : (
                   ledgerEntries.map((e) => (
                     <div
@@ -351,7 +347,7 @@ export const LedgersPage: React.FC<LedgersPageProps> = ({ shopProfile }) => {
                     >
                       <div>
                         <div className="font-bold text-slate-800">
-                          {e.direction === 'DEBIT' ? 'Invoice Issued (Udhaar)' : 'Payment Received'}
+                          {e.direction === 'DEBIT' ? t.invoiceIssuedUdhaar : t.paymentReceivedText}
                         </div>
                         <div className="text-[10px] text-slate-400 font-mono">
                           {new Date(e.occurred_at).toLocaleDateString('en-IN')}
@@ -385,7 +381,7 @@ export const LedgersPage: React.FC<LedgersPageProps> = ({ shopProfile }) => {
                     className="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5"
                   >
                     <DollarSign className="w-4 h-4" />
-                    <span>Receive Customer Payment</span>
+                    <span>{t.receiveCustomerPayment}</span>
                   </button>
                 </div>
               )}
@@ -393,7 +389,7 @@ export const LedgersPage: React.FC<LedgersPageProps> = ({ shopProfile }) => {
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-slate-400 py-12 text-center">
               <BookOpen className="w-8 h-8 mb-2 opacity-50" />
-              <p className="text-xs">No customer selected.</p>
+              <p className="text-xs">{t.noCustomerSelected}</p>
             </div>
           )}
         </div>
@@ -404,7 +400,7 @@ export const LedgersPage: React.FC<LedgersPageProps> = ({ shopProfile }) => {
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-surface rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-slate-200">
             <div className="flex justify-between items-center mb-3">
-              <h3 className="font-bold text-base text-slate-900">Receive Payment</h3>
+              <h3 className="font-bold text-base text-slate-900">{t.receivePaymentTitle}</h3>
               <button
                 onClick={() => setIsCollectModalOpen(false)}
                 className="p-1 text-slate-400 hover:text-slate-600"
@@ -424,7 +420,7 @@ export const LedgersPage: React.FC<LedgersPageProps> = ({ shopProfile }) => {
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Amount Received (₹) *
+                  {t.amountReceivedLabel}
                 </label>
                 <input
                   type="number"
@@ -494,7 +490,7 @@ export const LedgersPage: React.FC<LedgersPageProps> = ({ shopProfile }) => {
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-surface rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
             <div className="flex justify-between items-center mb-3">
-              <h3 className="font-bold text-base text-slate-900">Add New Customer</h3>
+              <h3 className="font-bold text-base text-slate-900">{t.addNewCustomerTitle}</h3>
               <button
                 onClick={() => setIsAddPartyModalOpen(false)}
                 className="p-1 text-slate-400 hover:text-slate-600"

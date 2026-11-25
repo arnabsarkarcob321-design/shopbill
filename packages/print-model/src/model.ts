@@ -196,16 +196,8 @@ export function createPrintModel(params: {
     upiQrPayload = `upi://pay?pa=${shop.upi_id}&pn=${shopNameEnc}&am=${amountRupees}&cu=INR&tn=${invoiceNumber}`;
   }
 
-  const dateStr =
-    typeof issueDate === 'string'
-      ? issueDate
-      : issueDate.toLocaleDateString('en-IN', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        });
+  const parsedDate = typeof issueDate === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(issueDate) ? new Date(issueDate) : issueDate;
+  const dateStr = typeof parsedDate === 'string' ? parsedDate : parsedDate.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
   return {
     shop,

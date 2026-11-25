@@ -8,15 +8,17 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { db, InvoiceRecord } from '../db';
-import { formatCurrency } from '@shopbill/i18n';
+import { formatCurrency, translations, SupportedLanguage } from '@shopbill/i18n';
 import { PrintPreviewModal } from '../components/PrintPreviewModal';
 import { createPrintModel, PrintModel } from '@shopbill/print-model';
 
 interface ReportsPageProps {
   shopProfile: any;
+  lang?: SupportedLanguage;
 }
 
-export const ReportsPage: React.FC<ReportsPageProps> = ({ shopProfile }) => {
+export const ReportsPage: React.FC<ReportsPageProps> = ({ shopProfile, lang = 'en' }) => {
+  const t = translations[lang] || translations.en;
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [previewPrintModel, setPreviewPrintModel] = useState<PrintModel | null>(null);
   const [cancelModalInvoice, setCancelModalInvoice] = useState<InvoiceRecord | null>(null);
@@ -218,10 +220,10 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ shopProfile }) => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
-            Reports & Day Close Drawer
+            {t.reportsTitle}
           </h2>
           <p className="text-xs text-slate-500 font-medium">
-            Cash drawer audit, monthly 7-tab CA GST pack, and sales register
+            {t.reportsSubtitle}
           </p>
         </div>
 
@@ -230,7 +232,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ shopProfile }) => {
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-all"
         >
           <FileSpreadsheet className="w-4 h-4" />
-          <span>Export CA / GST Register (.csv)</span>
+          <span>{t.exportCsvRegister}</span>
         </button>
       </div>
 
@@ -243,10 +245,10 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ shopProfile }) => {
             </div>
             <div>
               <h3 className="font-bold text-slate-900 text-sm">
-                Day Close Cash Drawer Reconciliation
+                {t.dayCloseTitle}
               </h3>
               <p className="text-[11px] text-slate-500">
-                Verify physically counted drawer cash against recorded transactions
+                {t.dayCloseSubtitle}
               </p>
             </div>
           </div>
@@ -261,7 +263,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ shopProfile }) => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
           <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
             <span className="text-[11px] font-semibold text-slate-500 uppercase">
-              Opening Drawer Cash
+              {t.openingDrawerCash}
             </span>
             <div className="flex items-center gap-1 mt-1">
               <span className="text-xs font-bold text-slate-400">₹</span>
@@ -277,7 +279,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ shopProfile }) => {
 
           <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200">
             <span className="text-[11px] font-bold text-blue-700 uppercase">
-              Today's Cash Sales
+              {t.todaysCashSales}
             </span>
             <div className="text-lg font-black text-blue-900 tabular-nums mt-1">
               {formatCurrency(todayCashSalesPaise)}
@@ -289,17 +291,17 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ shopProfile }) => {
 
           <div className="p-3.5 rounded-xl bg-slate-100 border border-slate-300">
             <span className="text-[11px] font-bold text-slate-700 uppercase">
-              Expected Cash in Drawer
+              {t.expectedCashInDrawer}
             </span>
             <div className="text-lg font-black text-slate-900 tabular-nums mt-1">
               {formatCurrency(expectedCashInDrawerPaise)}
             </div>
-            <div className="text-[10px] text-slate-500 mt-0.5">Opening + Cash bills</div>
+            <div className="text-[10px] text-slate-500 mt-0.5">{t.openingPlusCashBills}</div>
           </div>
 
           <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-300">
             <span className="text-[11px] font-bold text-emerald-800 uppercase">
-              Actual Cash Count (₹)
+              {t.actualCashCount}
             </span>
             <div className="flex items-center gap-1 mt-1">
               <span className="text-xs font-bold text-emerald-700">₹</span>
@@ -345,7 +347,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ shopProfile }) => {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
             <input
               type="text"
-              placeholder="Session close notes / remarks (optional)"
+              placeholder={t.sessionCloseNotesPlaceholder}
               value={dayCloseNotes}
               onChange={(e) => setDayCloseNotes(e.target.value)}
               className="text-xs px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary flex-1 max-w-md"
@@ -355,7 +357,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ shopProfile }) => {
               className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2"
             >
               <Lock className="w-4 h-4 text-emerald-400" />
-              <span>Lock Today's Drawer Session</span>
+              <span>{t.lockDrawerSession}</span>
             </button>
           </div>
         )}
@@ -365,10 +367,10 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ shopProfile }) => {
       <div className="bg-surface rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="p-4 border-b border-slate-200 flex justify-between items-center">
           <h3 className="font-bold text-slate-900 text-sm">
-            Sales & Tax Invoices Register ({invoices.length} Bills)
+            {t.salesRegisterTitle} ({invoices.length})
           </h3>
           <span className="text-xs text-slate-500 font-semibold">
-            Turnover: {formatCurrency(invoices.reduce((a, b) => a + b.grand_total_paise, 0))}
+            {t.turnoverLabel} {formatCurrency(invoices.reduce((a, b) => a + b.grand_total_paise, 0))}
           </span>
         </div>
 
@@ -376,15 +378,15 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ shopProfile }) => {
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
               <tr>
-                <th className="py-3 px-4">Invoice #</th>
-                <th className="py-3 px-4">Date / Time</th>
-                <th className="py-3 px-4">Party</th>
-                <th className="py-3 px-4 text-right">Taxable</th>
-                <th className="py-3 px-4 text-right">Taxes</th>
-                <th className="py-3 px-4 text-right">Grand Total</th>
-                <th className="py-3 px-4">Payment</th>
-                <th className="py-3 px-4 text-center">Status</th>
-                <th className="py-3 px-4 text-center">Action</th>
+                <th className="py-3 px-4">{t.colInvoice}</th>
+                <th className="py-3 px-4">{t.colDateTime}</th>
+                <th className="py-3 px-4">{t.colParty}</th>
+                <th className="py-3 px-4 text-right">{t.colTaxable}</th>
+                <th className="py-3 px-4 text-right">{t.colTaxes}</th>
+                <th className="py-3 px-4 text-right">{t.colGrandTotal}</th>
+                <th className="py-3 px-4">{t.colPayment}</th>
+                <th className="py-3 px-4 text-center">{t.colStatus}</th>
+                <th className="py-3 px-4 text-center">{t.colAction}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -486,7 +488,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ shopProfile }) => {
       {cancelModalInvoice && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-surface rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-slate-200">
-            <h3 className="font-bold text-base text-red-700 mb-2">Cancel Invoice</h3>
+            <h3 className="font-bold text-base text-red-700 mb-2">{t.cancelInvoiceTitle}</h3>
             <p className="text-xs text-slate-600 mb-4">
               Are you sure you want to cancel invoice <strong>#{cancelModalInvoice.invoice_number}</strong>?
               Per GST rules, cancelled numbers cannot be deleted and will be documented in GSTR registers.
@@ -494,7 +496,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ shopProfile }) => {
 
             <div className="mb-4">
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Mandatory Reason for Cancellation *
+                {t.cancelInvoiceReason}
               </label>
               <textarea
                 rows={3}
